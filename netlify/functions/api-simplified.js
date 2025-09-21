@@ -3,13 +3,15 @@ const serverless = require('serverless-http');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
 
 // Setup Express app
 const app = express();
 const router = express.Router();
 
-// In-memory data for simple functioning
-const inMemoryData = {
+// Load data from data.json file
+let inMemoryData = {
   registrations: [],
   admins: [
     {
@@ -20,6 +22,23 @@ const inMemoryData = {
     }
   ]
 };
+
+// Try to load data from data.json if it exists
+try {
+  // In Netlify Functions, we need to use an absolute path based on the function's location
+  const dataPath = path.resolve(__dirname, '../../data.json');
+  if (fs.existsSync(dataPath)) {
+    console.log('Loading data from data.json file');
+    const fileData = fs.readFileSync(dataPath, 'utf8');
+    const jsonData = JSON.parse(fileData);
+    inMemoryData.registrations = jsonData.registrations || [];
+    console.log(`Loaded ${inMemoryData.registrations.length} registrations from data.json`);
+  } else {
+    console.log('data.json file not found at:', dataPath);
+  }
+} catch (error) {
+  console.error('Error loading data from data.json:', error);
+}
 
 // Middleware
 app.use(cors());
@@ -171,7 +190,8 @@ router.get('/registrations', (req, res) => {
     return res.json(userRegistrations);
   }
   
-  res.json([]);
+  // If no idHash provided, return all registrations (for public access as requested)
+  res.json(inMemoryData.registrations);
 });
 
 // Create new registration
@@ -200,11 +220,15 @@ router.post('/registrations', (req, res) => {
   // Add to in-memory data
   inMemoryData.registrations.push(registration);
   
+  // Log the total count after adding
+  console.log(`Total registrations after adding: ${inMemoryData.registrations.length}`);
+  
   // Return success
   res.status(201).json({ 
     success: true,
     registration,
-    stored: 'memory-simplified-version'
+    stored: 'memory-simplified-version',
+    totalRegistrations: inMemoryData.registrations.length
   });
 });
 
@@ -224,6 +248,27 @@ router.delete('/admin/registrations/:id', verifyToken, isAdmin, (req, res) => {
 router.delete('/admin/registrations', verifyToken, isAdmin, (req, res) => {
   inMemoryData.registrations = [];
   res.json({ success: true });
+});
+
+// Add a public data endpoint to see all registrations for testing
+router.get('/data/all', (req, res) => {
+  try {
+    // Return information about the data source and registrations
+    res.json({
+      success: true,
+      message: 'All registrations data',
+      source: 'Loaded from data.json (if available) or in-memory',
+      timestamp: new Date().toISOString(),
+      totalCount: inMemoryData.registrations.length,
+      registrations: inMemoryData.registrations
+    });
+  } catch (error) {
+    console.error('Error in /data/all endpoint:', error);
+    res.status(500).json({ 
+      error: 'Failed to retrieve registrations data',
+      message: error.message
+    });
+  }
 });
 
 // Setup API endpoint
