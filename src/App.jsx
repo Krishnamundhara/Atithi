@@ -108,6 +108,7 @@ function App() {
   // Save registration to server
   async function saveRegistration(registration) {
     try {
+      console.log('Saving registration to API:', `${API_URL}/registrations`);
       const response = await fetch(`${API_URL}/registrations`, {
         method: 'POST',
         headers: {
@@ -121,7 +122,11 @@ function App() {
         throw new Error(`HTTP error ${response.status}`);
       }
       
-      const savedRegistration = await response.json();
+      const result = await response.json();
+      console.log('Registration response:', result);
+      
+      // The server now returns an object with success info and the registration
+      const savedRegistration = result.registration || registration;
       const updatedRegistrations = [...registrations, savedRegistration];
       setRegistrations(updatedRegistrations);
       
