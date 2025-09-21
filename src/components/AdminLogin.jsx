@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 
 const AdminLogin = ({ onLogin, onCancel }) => {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [serverStatus, setServerStatus] = useState('unknown');
@@ -83,27 +83,7 @@ const AdminLogin = ({ onLogin, onCancel }) => {
     }
   };
   
-  // Handle setup account click
-  const handleSetupClick = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(`${API_URL}/setup`);
-      const data = await response.json();
-      
-      if (response.ok) {
-        setUsername(data.credentials.username);
-        setPassword(data.credentials.password);
-        setError('');
-        alert('Admin account has been set up. You can now login with the pre-filled credentials.');
-      } else {
-        setError('Failed to set up admin account: ' + (data.error || 'Unknown error'));
-      }
-    } catch (err) {
-      setError('Failed to set up admin account: ' + err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Setup function removed for security
 
   return (
     <div className="admin-login-container">
@@ -130,8 +110,8 @@ const AdminLogin = ({ onLogin, onCancel }) => {
             id="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="Enter admin username"
-            autoComplete="username"
+            placeholder="Administrator username"
+            autoComplete="off"
             required
           />
         </div>
@@ -143,8 +123,8 @@ const AdminLogin = ({ onLogin, onCancel }) => {
             id="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter password"
-            autoComplete="current-password"
+            placeholder="Administrator password"
+            autoComplete="off"
             required
           />
         </div>
@@ -169,14 +149,8 @@ const AdminLogin = ({ onLogin, onCancel }) => {
       </form>
       
       <div className="login-help">
-        <p>Using credentials: username "{username}", password "{password}"</p>
-        <button 
-          onClick={handleSetupClick} 
-          className="text-button"
-          disabled={isLoading || serverStatus === 'offline'}
-        >
-          Setup Admin Account
-        </button>
+        <p>Please enter your administrator credentials</p>
+        {/* Setup button removed for security */}
       </div>
       
       <div className="server-status">
