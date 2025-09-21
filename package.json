@@ -8,6 +8,7 @@
     "dev:server": "nodemon server.js",
     "dev:full": "concurrently \"npm run dev\" \"npm run dev:server\"",
     "build": "vite build",
+    "prebuild": "node -e \"console.log('Running prebuild script to prepare data'); require('fs').copyFileSync('data.json', 'public/data.json'); console.log('Copied data.json to public directory');\"",
     "preview": "vite preview --port 5173",
     "server": "node server.js",
     "server:prod": "node production-server.js",
@@ -17,6 +18,7 @@
     "postinstall": "npm run build",
     "netlify:dev": "netlify dev",
     "netlify:build": "npm run build",
+    "build:data": "copy-data.bat && npm run build",
     "test:function": "node test-netlify-function.js",
     "init:db": "node init-database.js"
   },

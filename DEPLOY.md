@@ -104,8 +104,8 @@ We've included a GitHub Actions workflow file at `.github/workflows/netlify-depl
 ## Testing the Deployment
 
 Once deployed, your application will be available at:
-- Frontend: `https://your-netlify-app-name.netlify.app/`
-- API: `https://your-netlify-app-name.netlify.app/.netlify/functions/api/`
+- Frontend: `https://Atithi-tr.netlify.app/`
+- API: `https://Atithi-tr.netlify.app/.netlify/functions/api/`
 
 ## Troubleshooting
 

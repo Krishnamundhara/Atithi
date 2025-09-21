@@ -25,16 +25,30 @@ let inMemoryData = {
 
 // Try to load data from data.json if it exists
 try {
-  // In Netlify Functions, we need to use an absolute path based on the function's location
-  const dataPath = path.resolve(__dirname, '../../data.json');
-  if (fs.existsSync(dataPath)) {
-    console.log('Loading data from data.json file');
-    const fileData = fs.readFileSync(dataPath, 'utf8');
-    const jsonData = JSON.parse(fileData);
-    inMemoryData.registrations = jsonData.registrations || [];
-    console.log(`Loaded ${inMemoryData.registrations.length} registrations from data.json`);
-  } else {
-    console.log('data.json file not found at:', dataPath);
+  // Try multiple possible locations for data.json
+  const possiblePaths = [
+    path.resolve(__dirname, '../../data.json'),         // Root project directory
+    path.resolve(__dirname, '../data.json'),            // netlify/data.json
+    path.resolve(__dirname, 'data/data.json'),          // netlify/functions/data/data.json
+    path.resolve(__dirname, '../../dist/data.json')     // dist/data.json
+  ];
+  
+  let dataLoaded = false;
+  
+  for (const dataPath of possiblePaths) {
+    if (fs.existsSync(dataPath)) {
+      console.log('Loading data from data.json file:', dataPath);
+      const fileData = fs.readFileSync(dataPath, 'utf8');
+      const jsonData = JSON.parse(fileData);
+      inMemoryData.registrations = jsonData.registrations || [];
+      console.log(`Loaded ${inMemoryData.registrations.length} registrations from ${dataPath}`);
+      dataLoaded = true;
+      break;
+    }
+  }
+  
+  if (!dataLoaded) {
+    console.log('data.json file not found in any of the expected locations');
   }
 } catch (error) {
   console.error('Error loading data from data.json:', error);

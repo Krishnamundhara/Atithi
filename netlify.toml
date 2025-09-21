@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build"
+  command = "chmod +x copy-data.sh && ./copy-data.sh && npm run build"
   publish = "dist"
   functions = "netlify/functions"
 
