@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
   
   return {
     plugins: [react()],
+    publicDir: 'public',
     build: {
       outDir: 'dist',
       minify: isProduction ? 'esbuild' : false,

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .status {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <h1>Atithi Guardian API Test</h1>
+    
+    <div class="card">
+        <h2>API Health Check</h2>
+        <button onclick="checkApiHealth()">Test API Health</button>
+        <div class="status" id="healthStatus"></div>
+        <pre id="healthResponse"></pre>
+    </div>
+    
+    <div class="card">
+        <h2>Test API Endpoints</h2>
+        <button onclick="testServerStatus()">Test Server Status</button>
+        <button onclick="testAdminLogin()">Test Admin Login</button>
+        <button onclick="testRegistrations()">Test Registrations</button>
+        <div class="status" id="testStatus"></div>
+        <pre id="testResponse"></pre>
+    </div>
+
+    <div class="card">
+        <h2>API Information</h2>
+        <p>API Base URL: <code id="apiBaseUrl"></code></p>
+        <p>Current Mode: <span id="apiMode">Checking...</span></p>
+    </div>
+
+    <script>
+        // Determine if we're on Netlify or local
+        const isProduction = window.location.hostname !== 'localhost' && 
+                           window.location.hostname !== '127.0.0.1';
+        
+        const API_BASE = isProduction 
+            ? '/.netlify/functions/api' 
+            : '/api';
+            
+        document.getElementById('apiBaseUrl').textContent = API_BASE;
+        
+        // Helper functions
+        function updateStatus(elementId, success, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = success ? 'status success' : 'status error';
+        }
+        
+        function updateResponse(elementId, data) {
+            document.getElementById(elementId).textContent = 
+                typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+        }
+        
+        // API Tests
+        async function checkApiHealth() {
+            try {
+                updateStatus('healthStatus', true, 'Testing...');
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                document.getElementById('apiMode').textContent = data.mode || 'Standard';
+                
+                updateStatus('healthStatus', response.ok, 
+                    response.ok ? 'API is healthy ✅' : 'API health check failed ❌');
+                updateResponse('healthResponse', data);
+            } catch (error) {
+                updateStatus('healthStatus', false, 'Error connecting to API ❌');
+                updateResponse('healthResponse', error.message);
+            }
+        }
+        
+        async function testServerStatus() {
+            try {
+                updateStatus('testStatus', true, 'Testing server status...');
+                const response = await fetch(`${API_BASE}/test`);
+                const data = await response.json();
+                
+                updateStatus('testStatus', response.ok, 
+                    response.ok ? 'Server test successful ✅' : 'Server test failed ❌');
+                updateResponse('testResponse', data);
+            } catch (error) {
+                updateStatus('testStatus', false, 'Error testing server ❌');
+                updateResponse('testResponse', error.message);
+            }
+        }
+        
+        async function testAdminLogin() {
+            try {
+                updateStatus('testStatus', true, 'Testing admin login...');
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+                const data = await response.json();
+                
+                updateStatus('testStatus', response.ok, 
+                    response.ok ? 'Admin login successful ✅' : 'Admin login failed ❌');
+                updateResponse('testResponse', data);
+            } catch (error) {
+                updateStatus('testStatus', false, 'Error testing admin login ❌');
+                updateResponse('testResponse', error.message);
+            }
+        }
+        
+        async function testRegistrations() {
+            try {
+                updateStatus('testStatus', true, 'Testing registrations endpoint...');
+                const response = await fetch(`${API_BASE}/registrations`);
+                const data = await response.json();
+                
+                updateStatus('testStatus', response.ok, 
+                    response.ok ? 'Registrations test successful ✅' : 'Registrations test failed ❌');
+                updateResponse('testResponse', data);
+            } catch (error) {
+                updateStatus('testStatus', false, 'Error testing registrations ❌');
+                updateResponse('testResponse', error.message);
+            }
+        }
+        
+        // Run health check on page load
+        window.onload = checkApiHealth;
+    </script>
+</body>
+</html>
