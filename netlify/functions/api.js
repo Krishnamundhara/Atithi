@@ -1,69 +1,98 @@
 const express = require('express');
 const serverless = require('serverless-http');
-const fs = require('fs');
-const path = require('path');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const { Pool } = require('pg'); // PostgreSQL client
 
 // Setup Express app
 const app = express();
 const router = express.Router();
 
-// In-memory data (for Netlify functions)
-let inMemoryData = {
-  registrations: [],
-  admins: [
-    {
-      id: 'admin1',
-      username: 'admin',
-      // Default password: admin123
-      passwordHash: '$2b$10$3IMpgOD.U5NfR6ZhdxhLdebODDJLvzW1gaADnF01oxv565LyJCP8C'
-    }
-  ]
-};
-
-// Try to load initial data from JSON file for local development
-try {
-  if (process.env.NODE_ENV !== 'production') {
-    const dataFilePath = path.join(__dirname, '../../data.json');
-    if (fs.existsSync(dataFilePath)) {
-      const fileData = JSON.parse(fs.readFileSync(dataFilePath, 'utf8'));
-      inMemoryData = fileData;
-    }
+// Database connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // Required for some PostgreSQL services
   }
-} catch (error) {
-  console.error('Error loading initial data:', error);
-}
-
-// JWT configuration
-const JWT_SECRET = process.env.JWT_SECRET || 'atithi-guardian-secure-jwt-secret-key';
-const TOKEN_EXPIRY = '24h';
+});
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Authentication functions
-function authenticateAdmin(username, password) {
-  console.log(`Authenticating admin: ${username}`);
-  console.log(`JWT_SECRET is ${JWT_SECRET ? 'set' : 'NOT SET'}`);
-  console.log(`Admin accounts in system: ${inMemoryData.admins.length}`);
-  console.log(`First admin username: ${inMemoryData.admins[0]?.username}`);
-  
-  const admin = inMemoryData.admins.find(a => a.username === username);
-  
-  if (!admin) {
-    console.log(`Admin not found with username: ${username}`);
-    return null;
+// JWT configuration
+const JWT_SECRET = process.env.JWT_SECRET || 'atithi-guardian-secure-jwt-secret-key';
+const TOKEN_EXPIRY = '24h';
+
+// Initialize database tables if they don't exist
+async function initializeDatabase() {
+  try {
+    const client = await pool.connect();
+    
+    // Create admins table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS admins (
+        id TEXT PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Create registrations table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS registrations (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        id_hash TEXT NOT NULL,
+        days INTEGER NOT NULL,
+        created_at TIMESTAMP NOT NULL,
+        expires_at TIMESTAMP NOT NULL
+      )
+    `);
+    
+    // Check if admin exists, if not create default admin
+    const adminCheck = await client.query('SELECT COUNT(*) FROM admins');
+    if (parseInt(adminCheck.rows[0].count) === 0) {
+      // Default password: admin123
+      const passwordHash = '$2b$10$3IMpgOD.U5NfR6ZhdxhLdebODDJLvzW1gaADnF01oxv565LyJCP8C';
+      await client.query(
+        'INSERT INTO admins (id, username, password_hash) VALUES ($1, $2, $3)',
+        ['admin1', 'admin', passwordHash]
+      );
+      console.log('Default admin created');
+    }
+    
+    client.release();
+    console.log('Database initialized successfully');
+  } catch (error) {
+    console.error('Database initialization error:', error);
   }
+}
+
+// Initialize database on cold start
+initializeDatabase().catch(console.error);
+
+// Authentication functions
+async function authenticateAdmin(username, password) {
+  console.log(`Authenticating admin: ${username}`);
   
   try {
+    const result = await pool.query(
+      'SELECT * FROM admins WHERE username = $1',
+      [username]
+    );
+    
+    if (result.rows.length === 0) {
+      console.log(`Admin not found with username: ${username}`);
+      return null;
+    }
+    
+    const admin = result.rows[0];
     console.log(`Admin found: ${admin.username}, checking password...`);
-    console.log(`Stored password hash: ${admin.passwordHash.substring(0, 10)}...`);
     
     // For testing in Netlify, allow default admin login
-    // Remove this in real production
     if (username === 'admin' && password === 'admin123') {
       console.log('Default admin credentials accepted');
       const token = jwt.sign(
@@ -74,7 +103,7 @@ function authenticateAdmin(username, password) {
       return { admin: { id: admin.id, username: admin.username }, token };
     }
     
-    const isPasswordValid = bcrypt.compareSync(password, admin.passwordHash);
+    const isPasswordValid = bcrypt.compareSync(password, admin.password_hash);
     console.log(`Password validation result: ${isPasswordValid ? 'valid' : 'invalid'}`);
     
     if (!isPasswordValid) {
@@ -91,8 +120,7 @@ function authenticateAdmin(username, password) {
     
     return { admin: { id: admin.id, username: admin.username }, token };
   } catch (err) {
-    console.error("Password verification error:", err);
-    console.error(err.stack);
+    console.error('Authentication error:', err);
     return null;
   }
 }
@@ -125,14 +153,54 @@ function isAdmin(req, res, next) {
 // API Routes
 
 // Health check endpoint
-router.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    environment: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString(),
-    functionName: 'api',
-    registrationsCount: inMemoryData.registrations.length
-  });
+router.get('/health', async (req, res) => {
+  try {
+    const dbResult = await pool.query('SELECT NOW()');
+    res.json({ 
+      status: 'ok', 
+      environment: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString(),
+      functionName: 'api',
+      database: 'connected',
+      dbTimestamp: dbResult.rows[0].now
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      environment: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString(),
+      error: error.message,
+      database: 'disconnected'
+    });
+  }
+});
+
+// Test endpoint for connection checking
+router.get('/test', async (req, res) => {
+  try {
+    // Get registration count from database
+    const regCount = await pool.query('SELECT COUNT(*) FROM registrations');
+    const adminCount = await pool.query('SELECT COUNT(*) FROM admins');
+    
+    res.json({ 
+      status: 'online', 
+      message: 'Server is running', 
+      environment: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString(),
+      registrationsCount: parseInt(regCount.rows[0].count),
+      adminsConfigured: parseInt(adminCount.rows[0].count),
+      apiMode: 'netlify-function-with-database',
+      jwtSecretConfigured: !!process.env.JWT_SECRET,
+      databaseConnected: true
+    });
+  } catch (error) {
+    console.error('Test endpoint error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Database connection error',
+      error: error.message
+    });
+  }
 });
 
 // Admin login
@@ -146,18 +214,7 @@ router.post('/admin/login', async (req, res) => {
   try {
     console.log(`Login attempt for username: ${username}`);
     
-    if (!inMemoryData.admins || inMemoryData.admins.length === 0) {
-      console.error('No admin accounts configured');
-      return res.status(500).json({ error: 'No admin accounts configured' });
-    }
-    
-    const adminExists = inMemoryData.admins.some(a => a.username === username);
-    if (!adminExists) {
-      console.log(`Admin username not found: ${username}`);
-      return res.status(401).json({ error: 'Invalid username or password' });
-    }
-    
-    const result = authenticateAdmin(username, password);
+    const result = await authenticateAdmin(username, password);
     
     if (!result) {
       console.log(`Failed login attempt for username: ${username}`);
@@ -173,24 +230,35 @@ router.post('/admin/login', async (req, res) => {
 });
 
 // Get all registrations (admin only)
-router.get('/admin/registrations', verifyToken, isAdmin, (req, res) => {
-  res.json(inMemoryData.registrations);
+router.get('/admin/registrations', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM registrations ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error getting registrations:', error);
+    res.status(500).json({ error: 'Failed to retrieve registrations' });
+  }
 });
 
 // Get registrations by ID hash (for user verification)
-router.get('/registrations', (req, res) => {
+router.get('/registrations', async (req, res) => {
   const { idHash } = req.query;
   
-  if (idHash) {
-    const userRegistrations = inMemoryData.registrations.filter(r => r.idHash === idHash);
-    return res.json(userRegistrations);
+  if (!idHash) {
+    return res.json([]);
   }
   
-  res.json([]);
+  try {
+    const result = await pool.query('SELECT * FROM registrations WHERE id_hash = $1', [idHash]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error getting registrations by hash:', error);
+    res.status(500).json({ error: 'Failed to retrieve registrations' });
+  }
 });
 
 // Create new registration
-router.post('/registrations', (req, res) => {
+router.post('/registrations', async (req, res) => {
   const registration = req.body;
   
   if (!registration.name || !registration.idHash || !registration.days) {
@@ -212,66 +280,58 @@ router.post('/registrations', (req, res) => {
     registration.expiresAt = expiryDate.toISOString();
   }
   
-  // Add to in-memory data
-  inMemoryData.registrations.push(registration);
-  
   try {
-    // For local development, also save to file if possible
-    if (process.env.NODE_ENV !== 'production') {
-      const dataFilePath = path.join(__dirname, '../../data.json');
-      fs.writeFileSync(dataFilePath, JSON.stringify(inMemoryData, null, 2));
-    }
+    await pool.query(
+      'INSERT INTO registrations (id, name, id_hash, days, created_at, expires_at) VALUES ($1, $2, $3, $4, $5, $6)',
+      [
+        registration.id, 
+        registration.name, 
+        registration.idHash, 
+        registration.days, 
+        registration.createdAt, 
+        registration.expiresAt
+      ]
+    );
     
-    // Return success
     res.status(201).json({ 
       success: true,
       registration,
-      stored: process.env.NODE_ENV === 'production' ? 'cloud' : 'file' 
+      stored: 'database' 
     });
   } catch (error) {
     console.error('Error saving registration:', error);
-    
-    // Even if file save fails, we still have it in memory, so return success
-    res.status(201).json({ 
-      success: true,
-      registration,
-      stored: 'memory',
-      warning: 'Data saved in memory only. May be lost on server restart.'
+    res.status(500).json({ 
+      error: 'Failed to save registration',
+      details: error.message
     });
   }
 });
 
 // Delete registration by ID (admin only)
-router.delete('/admin/registrations/:id', verifyToken, isAdmin, (req, res) => {
-  const registrationIndex = inMemoryData.registrations.findIndex(r => r.id === req.params.id);
-  
-  if (registrationIndex === -1) {
-    return res.status(404).json({ error: 'Registration not found' });
+router.delete('/admin/registrations/:id', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const result = await pool.query('DELETE FROM registrations WHERE id = $1 RETURNING *', [req.params.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Registration not found' });
+    }
+    
+    res.json({ success: true, deleted: result.rows[0] });
+  } catch (error) {
+    console.error('Error deleting registration:', error);
+    res.status(500).json({ error: 'Failed to delete registration' });
   }
-  
-  inMemoryData.registrations.splice(registrationIndex, 1);
-  res.json({ success: true });
 });
 
 // Delete all registrations (admin only)
-router.delete('/admin/registrations', verifyToken, isAdmin, (req, res) => {
-  inMemoryData.registrations = [];
-  res.json({ success: true });
-});
-
-// Test endpoint for connection checking
-router.get('/test', (req, res) => {
-  res.json({ 
-    status: 'online', 
-    message: 'Server is running', 
-    environment: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString(),
-    registrationsCount: inMemoryData.registrations.length,
-    adminsConfigured: inMemoryData.admins.length,
-    defaultAdminExists: inMemoryData.admins.some(a => a.username === 'admin'),
-    apiMode: 'netlify-function',
-    jwtSecretConfigured: !!process.env.JWT_SECRET
-  });
+router.delete('/admin/registrations', verifyToken, isAdmin, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM registrations');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting all registrations:', error);
+    res.status(500).json({ error: 'Failed to delete registrations' });
+  }
 });
 
 // Setup API endpoint
