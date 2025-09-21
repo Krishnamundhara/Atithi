@@ -16,7 +16,8 @@
     "lint": "eslint src --ext js,jsx",
     "postinstall": "npm run build",
     "netlify:dev": "netlify dev",
-    "netlify:build": "npm run build"
+    "netlify:build": "npm run build",
+    "test:function": "node test-netlify-function.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

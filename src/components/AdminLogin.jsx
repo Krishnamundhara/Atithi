@@ -17,6 +17,7 @@ const AdminLogin = ({ onLogin, onCancel }) => {
 
   const testServerConnection = async () => {
     try {
+      console.log('Testing server connection at:', `${API_URL}/test`);
       const response = await fetch(`${API_URL}/test`, {
         method: 'GET',
         headers: {

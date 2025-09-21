@@ -103,7 +103,13 @@ function isAdmin(req, res, next) {
 
 // Health check endpoint
 router.get('/health', (req, res) => {
-  res.json({ status: 'ok', environment: process.env.NODE_ENV || 'development' });
+  res.json({ 
+    status: 'ok', 
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    functionName: 'api',
+    registrationsCount: inMemoryData.registrations.length
+  });
 });
 
 // Admin login
@@ -203,6 +209,16 @@ router.delete('/admin/registrations/:id', verifyToken, isAdmin, (req, res) => {
 router.delete('/admin/registrations', verifyToken, isAdmin, (req, res) => {
   inMemoryData.registrations = [];
   res.json({ success: true });
+});
+
+// Test endpoint for connection checking
+router.get('/test', (req, res) => {
+  res.json({ 
+    status: 'online', 
+    message: 'Server is running', 
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Setup API endpoint

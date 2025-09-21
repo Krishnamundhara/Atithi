@@ -2,7 +2,7 @@
 
 This file contains instructions on configuring and deploying your Tourist QR App on Netlify.
 
-## Overview
+## Overview (Updated)
 
 The application consists of:
 1. A React frontend (built with Vite)
