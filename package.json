@@ -1,0 +1,48 @@
+{
+  "name": "atithi-guardian-protocol",
+  "private": true,
+  "version": "1.0.0",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "nodemon server.js",
+    "dev:full": "concurrently \"npm run dev\" \"npm run dev:server\"",
+    "build": "vite build",
+    "preview": "vite preview --port 5173",
+    "server": "node server.js",
+    "server:prod": "node production-server.js",
+    "start": "npm run build && npm run server:prod",
+    "deploy": "npm run build && npm run server:prod",
+    "lint": "eslint src --ext js,jsx",
+    "postinstall": "npm run build",
+    "netlify:dev": "netlify dev",
+    "netlify:build": "npm run build"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^16.3.1",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-qr-code": "^2.0.15",
+    "helmet": "^7.1.0",
+    "compression": "^1.7.4",
+    "serverless-http": "^3.2.0",
+    "concurrently": "^8.2.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "nodemon": "^3.0.3",
+    "vite": "^5.4.8",
+    "netlify-cli": "^15.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "registrations": [
+    {
+      "id": "1758471820771",
+      "name": "priya shah",
+      "idHash": "7a19624c601756944d3f4551e21e0974a9a4312fbbd1f35d0469d34b96f38cb6",
+      "days": 6,
+      "createdAt": "2025-09-21T16:23:40.771Z",
+      "expiresAt": "2025-09-27T16:23:40.771Z"
+    },
+    {
+      "id": "1758471898273",
+      "name": "afsfs",
+      "idHash": "7453b58f206b9d532f0781672472e45fe8b7411e6d88c204cad3e65322c0f026",
+      "days": 2,
+      "createdAt": "2025-09-21T16:24:58.273Z",
+      "expiresAt": "2025-09-23T16:24:58.273Z"
+    },
+    {
+      "id": "1758472330522",
+      "name": "Sakshi govind mundhara",
+      "idHash": "8e64a06e26c6ed1b9af026d8ce1c74a1a6787f2a2710273bb87f41b6fdd590bb",
+      "days": 32,
+      "createdAt": "2025-09-21T16:32:10.522Z",
+      "expiresAt": "2025-10-23T16:32:10.522Z"
+    },
+    {
+      "id": "1758474327657",
+      "name": "Krishna df",
+      "idHash": "14fb6778de6dfce378db4e0f12d3d02b40851fde341366986c2c521120fb02c3",
+      "days": 21,
+      "createdAt": "2025-09-21T17:05:27.657Z",
+      "expiresAt": "2025-10-12T17:05:27.657Z"
+    },
+    {
+      "id": "1758474355197",
+      "name": "Sakshi fsgxgsd",
+      "idHash": "a03963e57ad1ed93f5cf9f5c42c717b8698adbb84540f15e318ee5c644b8283a",
+      "days": 34,
+      "createdAt": "2025-09-21T17:05:55.197Z",
+      "expiresAt": "2025-10-25T17:05:55.197Z"
+    },
+    {
+      "id": "1758475002285",
+      "name": "vivek pawar",
+      "idHash": "3e2af0e2cfaf0a2b778aed7dfd54b39c00a6bf55ee8575a6a50606f00571feb4",
+      "days": 51,
+      "createdAt": "2025-09-21T17:16:42.285Z",
+      "expiresAt": "2025-11-11T17:16:42.285Z"
+    }
+  ],
+  "admins": [
+    {
+      "id": "admin1",
+      "username": "admin",
+      "passwordHash": "$2b$10$3IMpgOD.U5NfR6ZhdxhLdebODDJLvzW1gaADnF01oxv565LyJCP8C"
+    }
+  ]
+}
